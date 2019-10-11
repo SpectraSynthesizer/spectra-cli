@@ -1,0 +1,12 @@
+module Domain_Var_In_Little_Array
+
+define
+	SIZE := 4;
+
+
+
+sys Int(0..1)[SIZE] array;
+
+
+gar
+	forall i in Int(0..5). array[i]=0; //wrong - i can be out of bounds.
