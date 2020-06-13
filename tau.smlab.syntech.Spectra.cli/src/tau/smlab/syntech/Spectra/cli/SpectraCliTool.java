@@ -38,9 +38,10 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import net.sf.javabdd.BDD;
-import tau.smlab.syntech.bddgenerator.BDDEnergyReduction;
+import net.sf.javabdd.BDDFactory;
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.bddgenerator.BDDGenerator.TraceInfo;
+import tau.smlab.syntech.bddgenerator.energy.BDDEnergyReduction;
 import tau.smlab.syntech.gameinput.model.GameInput;
 import tau.smlab.syntech.gameinputtrans.TranslationException;
 import tau.smlab.syntech.gameinputtrans.TranslationProvider;
@@ -50,14 +51,16 @@ import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.PlayerModule.TransFuncType;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerConstruction;
+import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerJitInfo;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerReaderWriter;
 import tau.smlab.syntech.games.gr1.GR1Game;
-import tau.smlab.syntech.games.gr1.GR1GameExistentialMemoryless;
 import tau.smlab.syntech.games.gr1.GR1GameExperiments;
 import tau.smlab.syntech.games.gr1.GR1GameImplC;
 import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
 import tau.smlab.syntech.games.gr1.GR1SymbolicControllerConstruction;
+import tau.smlab.syntech.games.gr1.jit.SymbolicControllerJitInfoConstruction;
 import tau.smlab.syntech.jtlv.BDDPackage;
+import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.BDDPackage.BBDPackageVersion;
 import tau.smlab.syntech.spectragameinput.ErrorsInSpectraException;
 import tau.smlab.syntech.spectragameinput.SpectraInputProviderNoIDE;
@@ -71,16 +74,18 @@ public class SpectraCliTool {
 		options.addOption("i", "input", true, "Spectra input file name");
 		options.addOption("o", "output", true, "Ouptut folder");
 		options.addOption("s", "synthesize", false, "Synthesize symbolic controller");
+		options.addOption(null, "jit", false, "Synthesize Just-in-time symbolic controller");
 		options.addOption(null, "jtlv", false, "Use JTLV package instead of CUDD");
 		options.addOption(null, "disable-opt", true, "Disable optimizations");
 		options.addOption(null, "disable-grouping", false, "Disable reorder with grouping");
 		options.addOption("v", "verbose", false, "Verbose logging");
+		options.addOption(null, "reorder", false, "Reorder BDD before save for reduced size");
 
 		CommandLineParser parser = new DefaultParser();
 		CommandLine cmd = parser.parse(options, args);
 		
 		if (!cmd.hasOption("i")) {
-			System.out.println("Error: no Spectra file name provided");
+			System.out.println("Error: No Spectra file name provided");
 			return;
 		}
 		String fileName = cmd.getOptionValue("i");
@@ -92,31 +97,45 @@ public class SpectraCliTool {
 			outputFolderName = new File(fileName).getParent() + File.separator + "out";
 		}
 		
-		boolean synthesize = cmd.hasOption("synthesize");
+		boolean synthesize = cmd.hasOption("s");
+		boolean jit = cmd.hasOption("jit");
 		boolean optimize = !cmd.hasOption("disable-opt");
 		boolean grouping = !cmd.hasOption("disable-grouping");
 		boolean jtlv = cmd.hasOption("jtlv");
 		boolean verbose = cmd.hasOption("v");
+		boolean reorder = cmd.hasOption("reorder");
 		BDDPackage pkg = jtlv ? BDDPackage.JTLV : BDDPackage.CUDD;
 		BDDPackage.BBDPackageVersion version = jtlv ? BBDPackageVersion.DEFAULT : BBDPackageVersion.CUDD_3_0;
 		BDDPackage.setCurrPackage(pkg, version);
+		Env.enableReorder();
+		Env.TRUE().getFactory().autoReorder(BDDFactory.REORDER_SIFT);
 
 		SpectraInputProviderNoIDE sip = new SpectraInputProviderNoIDE();
 		GameInput gi;
 		try {
 			gi = sip.getGameInput(fileName);
 		} catch (SpectraTranslationException | ErrorsInSpectraException e) {
-			System.out.println("Error: could not prepare game input from Spectra file. "
+			System.out.println("Error: Could not prepare game input from Spectra file. "
 					+ "Please verify that the file is a valid Spectra specification.");
 			e.printStackTrace();
 			return;
+		}
+		
+		if (!gi.getWeightDefs().isEmpty()) {
+			if (!cmd.hasOption("energy-bound")) {
+				System.out.println("Error: Must specify energy bound for specification");
+				return;
+			} else {
+				int energyBound = Integer.parseInt(cmd.getOptionValue("energy-bound"));
+				gi.setEnergyBound(energyBound);
+			}
 		}
 		
 		try {
 			List<Translator> transList = DefaultTranslators.getDefaultTranslators();
 			TranslationProvider.translate(gi, transList);
 		} catch (TranslationException e) {
-			System.out.println("Error: could not execute translators on Spectra file. "
+			System.out.println("Error: Could not execute translators on Spectra file. "
 					+ "Please verify that the file is a valid Spectra specification.");
 			e.printStackTrace();
 			return;
@@ -129,33 +148,52 @@ public class SpectraCliTool {
 		if (synthesize) {
 			
 			if (!gr1.checkRealizability()) {
-				System.out.println("Error: Trying to synthesize an unrealizable specification");
+				System.out.println("Error: Cannot synthesize an unrealizable specification");
 				return;
 			}
 			
 			System.out.println("Result: Specification is realizable. Proceeding to synthesis");
 			
-			SymbolicControllerConstruction cc = new GR1SymbolicControllerConstruction(gr1.getMem(), gameModel);
-			SymbolicController ctrl = cc.calculateSymbolicController();
-			
+			BDD minWinCred = Env.TRUE();
 			if (gameModel.getWeights() != null) {
-				BDD minWinCred = BDDEnergyReduction.getMinWinCred(gameModel, gr1.sysWinningStates());					
-				ctrl.initial().andWith(minWinCred);
+				minWinCred = BDDEnergyReduction.getMinWinCred(gameModel, gr1.sysWinningStates());					
 			}
 			
-			try {
-				// create symbolic controller if not exists
-				File outFolder = new File(outputFolderName);
+			if (jit) {
 				
-				// write the actual symbolic controller BDDs and doms
-				SymbolicControllerReaderWriter.writeSymbolicController(ctrl, gameModel, outFolder.getAbsolutePath());
-			} catch (Exception e) {
-				System.out.println("Error: could not write bdd files");
-				e.printStackTrace();
-				return;
+				SymbolicControllerJitInfoConstruction jitInfoConstruction = new SymbolicControllerJitInfoConstruction(gr1.getMem(), gameModel, minWinCred);
+				SymbolicControllerJitInfo jitInfo = jitInfoConstruction.calculateJitSymbollicControllerInfo();
+				
+				try {
+					// write down symbolic controller jit info
+					SymbolicControllerReaderWriter.writeJitSymbolicController(jitInfo, gameModel, outputFolderName, reorder);
+				} catch (Exception e) {
+					System.out.println("Error: Could not write bdd files");
+					e.printStackTrace();
+					return;
+				}
+				
+				System.out.println("Result: Successfully synthesized a just-in-time controller in output folder");
+				
+			} else {
+				
+				SymbolicControllerConstruction cc = new GR1SymbolicControllerConstruction(gr1.getMem(), gameModel);
+				SymbolicController ctrl = cc.calculateSymbolicController();
+				
+				ctrl.initial().andWith(minWinCred);
+				
+				try {
+					// create symbolic controller if not exists
+					// write the actual symbolic controller BDDs and doms
+					SymbolicControllerReaderWriter.writeSymbolicController(ctrl, gameModel, outputFolderName, reorder);
+				} catch (Exception e) {
+					System.out.println("Error: Could not write bdd files");
+					e.printStackTrace();
+					return;
+				}
+				
+				System.out.println("Result: Successfully synthesized a controller in output folder");
 			}
-			
-			System.out.println("Result: Successfully synthesized a controller in /out folder");
 			
 		} else {  // Only check realizability
 			
@@ -174,16 +212,12 @@ public class SpectraCliTool {
 		
 		GR1Game gr1;
 		
-		if (gameModel.getSys().existentialGarNum() > 0) {
-			gr1 = new GR1GameExistentialMemoryless(gameModel);
+		if (BDDPackage.CUDD.equals(pkg)) {
+			gr1 = new GR1GameImplC(gameModel);
+		} else if (optimize) {
+			gr1 = new GR1GameExperiments(gameModel);
 		} else {
-			if (BDDPackage.CUDD.equals(pkg)) {
-				gr1 = new GR1GameImplC(gameModel);
-			} else if (optimize) {
-				gr1 = new GR1GameExperiments(gameModel);
-			} else {
-				gr1 = new GR1GameMemoryless(gameModel);
-			}
+			gr1 = new GR1GameMemoryless(gameModel);
 		}
 		
 		return gr1;

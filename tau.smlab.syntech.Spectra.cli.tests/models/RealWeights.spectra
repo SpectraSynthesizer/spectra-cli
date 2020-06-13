@@ -1,0 +1,213 @@
+
+spec SmartNeighborhood
+
+// *** define type of day and night ***
+type DayTime = {DAY, NIGHT};
+// *** define generic parameters ***
+define N := 4;
+define crosswalkLoc := 1; //between can 1 and 2.
+define PEDEST_WALK_SIZE := (N*2 + 1);
+define NUM_LIGHTS := (N*2 - 2);
+
+// ***Environment controlled input variables (sensors)***
+env DayTime dayTime;
+env boolean energyEfficiencyMode;
+env boolean[PEDEST_WALK_SIZE] pedestrians;  // pedestrians[PEDEST_WALK_SIZE-1] => someone on the crosswalk
+env boolean[N] garbageCansNorth;
+env boolean[N] garbageCansSouth;
+
+
+// ***System controlled output variables ***
+sys boolean isCleaningN;
+sys boolean isCleaningS;
+sys Int(0..N) garbageTruckNorth_location; //location N means not on the street.
+sys Int(0..N) garbageTruckSouth_location;
+sys boolean[NUM_LIGHTS] lights;
+
+
+
+//***Initial assumptions***
+asm side_walk_starts_empty:
+	forall i in Int(0..(PEDEST_WALK_SIZE-1)). pedestrians[i] = false;
+asm all_cans_start_empty:
+	forall i in Int(0..(N-1)). ((!garbageCansNorth[i]) & !garbageCansSouth[i]);
+asm dayTime = DAY;
+
+//***Assumptions on day and night***
+asm GF dayTime=DAY;
+asm GF dayTime=NIGHT;
+
+
+//***Assumptions on pedestrian walking routes***
+define crossing := pedestrians[PEDEST_WALK_SIZE-1];
+asm GF !crossing;
+
+
+//***Assumptions on garbage cans***
+
+//Eventually always each can will be full:
+asm GF garbageCansNorth[0];
+asm GF garbageCansSouth[0];
+asm GF garbageCansNorth[1];
+asm GF garbageCansSouth[1];
+asm GF garbageCansNorth[2];
+asm GF garbageCansSouth[2];
+asm GF garbageCansNorth[3];
+asm GF garbageCansSouth[3];
+
+//if truck is at can i, and it's cleaning, then the can will be empty on next stage.
+asm G forall i in Int(0..(N-1)). ((garbageTruckNorth_location = i) & garbageCansNorth[i] & isCleaningN) -> next(!garbageCansNorth[i]);
+asm G forall i in Int(0..(N-1)). ((garbageTruckSouth_location = i) & garbageCansSouth[i] & isCleaningS) -> next(!garbageCansSouth[i]);
+
+//garbage can stays full until it's cleaned
+asm G (garbageCansNorth[0] & (garbageTruckNorth_location != 0 | !isCleaningN)) -> next(garbageCansNorth[0]);
+asm G (garbageCansNorth[1] & (garbageTruckNorth_location != 1 | !isCleaningN)) -> next(garbageCansNorth[1]);
+asm G (garbageCansNorth[2] & (garbageTruckNorth_location != 2 | !isCleaningN)) -> next(garbageCansNorth[2]);
+asm G (garbageCansNorth[3] & (garbageTruckNorth_location != 3 | !isCleaningN)) -> next(garbageCansNorth[3]);
+
+asm G (garbageCansSouth[0] & (garbageTruckSouth_location != 0 | !isCleaningS)) -> next(garbageCansSouth[0]);
+asm G (garbageCansSouth[1] & (garbageTruckSouth_location != 1 | !isCleaningS)) -> next(garbageCansSouth[1]);
+asm G (garbageCansSouth[2] & (garbageTruckSouth_location != 2 | !isCleaningS)) -> next(garbageCansSouth[2]);
+asm G (garbageCansSouth[3] & (garbageTruckSouth_location != 3 | !isCleaningS)) -> next(garbageCansSouth[3]);
+
+
+
+//***Initial Guarantees***
+//gar all_lights_off;
+gar garbageTruckNorth_location = N;
+gar garbageTruckSouth_location = N;
+gar !isCleaningN; 
+gar !isCleaningS;
+
+
+//***truck Guarantees***
+//If truck is before crosswalk, and someone is crossing, then it won't move
+gar G (crossing & (garbageTruckNorth_location = crosswalkLoc)) ->
+   (next(garbageTruckNorth_location) = crosswalkLoc); 
+gar G (crossing & (garbageTruckSouth_location = crosswalkLoc)) ->
+   (next(garbageTruckSouth_location) = crosswalkLoc); 
+
+//If north truck at full can, stays there to clean next turn, and next turn won't be cleaning - North truck with trigger logic
+gar trig [true]*[(garbageCansNorth[0] & (garbageTruckNorth_location = 0) & !isCleaningN)] |=> [isCleaningN & garbageTruckNorth_location=0][!isCleaningN];
+gar trig [true]*[(garbageCansNorth[1] & (garbageTruckNorth_location = 1) & !isCleaningN)] |=> [isCleaningN & garbageTruckNorth_location=1][!isCleaningN];
+gar trig [true]*[(garbageCansNorth[2] & (garbageTruckNorth_location = 2) & !isCleaningN)] |=> [isCleaningN & garbageTruckNorth_location=2][!isCleaningN];
+gar trig [true]*[(garbageCansNorth[3] & (garbageTruckNorth_location = 3) & !isCleaningN)] |=> [isCleaningN & garbageTruckNorth_location=3][!isCleaningN];
+
+
+//If truck at full can, stays there to clean next turn - South truck with predicate logic
+predicate truckAtFullCanWillCleanSouth(Int(0..(3)) i):
+	(garbageCansSouth[i] & (garbageTruckSouth_location = i) & !isCleaningS) -> (next(isCleaningS) & (next(garbageTruckSouth_location) = i));
+
+gar G truckAtFullCanWillCleanSouth(0);
+gar G truckAtFullCanWillCleanSouth(1);
+gar G truckAtFullCanWillCleanSouth(2);
+gar G truckAtFullCanWillCleanSouth(3);
+
+
+//If south truck is currently cleaning a full can, next state it won't be cleaning and can will be empty.
+predicate truckCleaningWillStopSouth(Int(0..(3)) i):
+	((garbageCansSouth[i] & (garbageTruckSouth_location = i) & isCleaningS)) -> 
+										(next(!isCleaningS) & next(!garbageCansSouth[i]));
+gar G truckCleaningWillStopSouth(0);
+gar G truckCleaningWillStopSouth(1);
+gar G truckCleaningWillStopSouth(2);
+gar G truckCleaningWillStopSouth(3);
+
+
+//Truck cleaning means it's at a full can
+gar alw (isCleaningN -> (exists i in Int(0..(N-1)). (garbageCansNorth[i] = true & garbageTruckNorth_location = i)));
+gar alw (isCleaningS -> (exists i in Int(0..(N-1)). (garbageCansSouth[i] = true & garbageTruckSouth_location = i)));
+
+
+//Eventually always, the truck will come to clean all full cans.
+predicate isCleaningGarbageNorth(Int(0..(3)) i):
+	(garbageCansNorth[i] & (garbageTruckNorth_location = i) & isCleaningN);
+gar GF isCleaningGarbageNorth(0);
+gar GF isCleaningGarbageNorth(1);
+gar GF isCleaningGarbageNorth(2);
+gar GF isCleaningGarbageNorth(3);
+
+predicate isCleaningGarbageSouth(Int(0..(3)) i):
+	(garbageCansSouth[i] & (garbageTruckSouth_location = i) & isCleaningS);
+gar GF isCleaningGarbageSouth(0);
+gar GF isCleaningGarbageSouth(1);
+gar GF isCleaningGarbageSouth(2);
+gar GF isCleaningGarbageSouth(3);
+
+
+//Garbage trucks can only move one can forward, or stay in place.
+gar G (garbageTruckNorth_location != N) -> ((next(garbageTruckNorth_location) = garbageTruckNorth_location) | (next(garbageTruckNorth_location) = (garbageTruckNorth_location + 1)));
+gar G (garbageTruckSouth_location != N) -> ((next(garbageTruckSouth_location) = garbageTruckSouth_location) | (next(garbageTruckSouth_location) = (garbageTruckSouth_location + 1)));
+
+//Trucks not on road, can only appear at can 0.
+gar G (garbageTruckNorth_location = N) -> (next(garbageTruckNorth_location) = 0 | next(garbageTruckNorth_location) = N);
+gar G (garbageTruckSouth_location = N) -> (next(garbageTruckSouth_location) = 0 | next(garbageTruckSouth_location) = N);
+
+//Truck on empty can will keep moving
+gar G (!garbageCansNorth[0] & garbageTruckNorth_location = 0) -> (next(garbageTruckNorth_location) = 1);
+gar G (!garbageCansNorth[1] & garbageTruckNorth_location = 1 & !crossing) -> (next(garbageTruckNorth_location) = 2);
+gar G (!garbageCansNorth[2] & garbageTruckNorth_location = 2) -> (next(garbageTruckNorth_location) = 3);
+gar G (!garbageCansNorth[3] & garbageTruckNorth_location = 3) -> (next(garbageTruckNorth_location) = 4);
+
+gar G (!garbageCansSouth[0] & garbageTruckSouth_location = 0) -> (next(garbageTruckSouth_location) = 1);
+gar G (!garbageCansSouth[1] & garbageTruckSouth_location = 1 & !crossing) -> (next(garbageTruckSouth_location) = 2);
+gar G (!garbageCansSouth[2] & garbageTruckSouth_location = 2) -> (next(garbageTruckSouth_location) = 3);
+gar G (!garbageCansSouth[3] & garbageTruckSouth_location = 3) -> (next(garbageTruckSouth_location) = 4);
+
+//use weights to induce north truck to go clean, when cans are full
+define at_least_one_can_full_north := 
+	garbageCansNorth[0] | garbageCansNorth[1] | garbageCansNorth[2] | garbageCansNorth[3];
+	
+weight -1
+	at_least_one_can_full_north & garbageTruckNorth_location = N;
+
+weight 1 
+	!(garbageTruckNorth_location = N) & at_least_one_can_full_north;
+
+//enforce north truck to stay at parking (N) when no can is full
+gar G (!at_least_one_can_full_north & (garbageTruckNorth_location = N)) -> (next(garbageTruckNorth_location) = N);
+
+//use trigger to enforce south truck to wait at parking (N) if no can is full, and to leave if at least one is full. 
+define at_least_one_can_full_south := 
+	(garbageCansSouth[0] | garbageCansSouth[1] | garbageCansSouth[2] | garbageCansSouth[3]);
+define all_cans_empty_south :=
+	(!garbageCansSouth[0] & !garbageCansSouth[1] & !garbageCansSouth[2] & !garbageCansSouth[3]);
+	
+gar G (all_cans_empty_south & (garbageTruckSouth_location = N)) -> (next(garbageTruckSouth_location) = N);
+gar trig [true]*[at_least_one_can_full_south & (garbageTruckSouth_location = N)] |=> [garbageTruckSouth_location = 0]+;
+	
+
+
+// ***Light Guarantees***
+
+// *light behavior when not in energy saving mode - all off (day) or all on (night) *
+define all_lights_off := (!lights[0] & !lights[1] & !lights[2] & !lights[3] & !lights[4] & !lights[5]);
+define all_lights_on := (lights[0] & lights[1] & lights[2] & lights[3] & lights[4] & lights[5]);
+gar alw (((dayTime=NIGHT) & !energyEfficiencyMode) -> all_lights_on);
+gar alw ((dayTime=DAY) -> all_lights_off);
+
+// *light behavior when in energy saving mode - On when pedestrian is near. Off otherwise.*
+predicate energyEfficientNorthLightOFF(Int(0..(2)) i):
+	(((dayTime = NIGHT) & energyEfficiencyMode & !pedestrians[i] & !pedestrians[i+1]) -> !lights[i]);
+gar alw energyEfficientNorthLightOFF(0);
+gar alw energyEfficientNorthLightOFF(2);
+predicate energyEfficientSouthLightOFF(Int(3..(5)) i):
+	(((dayTime = NIGHT) & energyEfficiencyMode & !pedestrians[i+1] & !pedestrians[i+2]) -> !lights[i]);
+gar alw energyEfficientSouthLightOFF(3);
+gar alw energyEfficientSouthLightOFF(5); 
+
+//specific light management for the lights near the crosswalk (1 and 4)
+gar alw (((dayTime = NIGHT) & energyEfficiencyMode & !pedestrians[1] & !pedestrians[2] & !pedestrians[PEDEST_WALK_SIZE-1]) -> !lights[1]);
+gar alw (((dayTime = NIGHT) & energyEfficiencyMode & !pedestrians[5] & !pedestrians[6] & !pedestrians[PEDEST_WALK_SIZE-1]) -> !lights[4]);
+
+
+predicate energyEfficientNorthLightON(Int(0..(2)) i):
+	(((dayTime = NIGHT) & (pedestrians[i] | pedestrians[i+1] | (i=1 & pedestrians[PEDEST_WALK_SIZE-1])) & energyEfficiencyMode) -> lights[i]);
+gar alw energyEfficientNorthLightON(0);
+gar alw energyEfficientNorthLightON(1);
+gar alw energyEfficientNorthLightON(2);
+predicate energyEfficientSouthLightON(Int(3..(5)) i):
+	(((dayTime = NIGHT) & (pedestrians[i+1] | pedestrians[i+2] | (i=4 & pedestrians[PEDEST_WALK_SIZE-1])) & energyEfficiencyMode) -> lights[i]);
+gar alw energyEfficientSouthLightON(3);
+gar alw energyEfficientSouthLightON(4);
+gar alw energyEfficientSouthLightON(5);
