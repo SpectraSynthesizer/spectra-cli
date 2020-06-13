@@ -108,7 +108,37 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Error: could not execute translators on Spectra file"));
+		assertTrue(outContent.toString().contains("Error: Could not execute translators on Spectra file"));
+	}
+	
+	@Test
+	void testWeightsWithoutEnergyBound() {
+	
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/RealWeights.spectra"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Error: Must specify energy bound for specification"));
+	}
+	
+	@Test
+	void testWeightsWithEnergyBound() {
+	
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/RealWeights.spectra",
+					"-energy-bound",
+					"5"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Specification is realizable"));
 	}
 	
 	@Test
@@ -137,7 +167,51 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in /out folder"));
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in output folder"));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.init.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
+		
+	}
+	
+	@Test
+	void testJitSynthesizeCreatesFilesWithCudd() throws IOException {
+		
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/Realizable.spectra",
+					"-s",
+					"-jit"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a just-in-time controller in output folder"));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/fixpoints.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/justice.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/sizes")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
+		
+	}
+	
+	@Test
+	void testSynthesizeCreatesFilesWithReorderBeforeSave() throws IOException {
+		
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/Realizable.spectra",
+					"-s",
+					"-reorder"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in output folder"));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.init.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.trans.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
@@ -157,7 +231,7 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Error: Trying to synthesize an unrealizable specification"));
+		assertTrue(outContent.toString().contains("Error: Cannot synthesize an unrealizable specification"));
 	}
 	
 	@Test
@@ -200,7 +274,7 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Error: no Spectra file name provided"));
+		assertTrue(outContent.toString().contains("Error: No Spectra file name provided"));
 	}
 	
 	@Test
@@ -217,7 +291,7 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in /out folder"));
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in output folder"));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/controller.init.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/controller.trans.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/vars.doms")));
