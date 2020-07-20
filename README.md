@@ -9,7 +9,7 @@ In order to use the Spectra command line tool:
 -i /--input		The path to the input spectra file. The only required argument.
 -o/--output		The folder where the controller should be created. If not specified, the same folder as the input will be used.
 -s/--synthesize		Synthesize a controller or just check for realizability. Default is false.
-   --jit       Synthesize a just-in-time controller
+   --jit          Synthesize a just-in-time controller
    --jtlv		Use JTLV Java package for BDD manipulation instead of CUDD C library. Default is false.
    --disable-opt	Disable optimizations. Default is false.
    --disable-grouping	Disable variable grouping. Default is false.
