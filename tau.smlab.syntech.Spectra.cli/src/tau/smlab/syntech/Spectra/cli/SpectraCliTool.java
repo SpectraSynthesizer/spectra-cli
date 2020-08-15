@@ -74,7 +74,7 @@ public class SpectraCliTool {
 		options.addOption("i", "input", true, "Spectra input file name");
 		options.addOption("o", "output", true, "Ouptut folder");
 		options.addOption("s", "synthesize", false, "Synthesize symbolic controller");
-		options.addOption(null, "jit", false, "Synthesize Just-in-time symbolic controller");
+		options.addOption(null, "static", false, "Synthesize static symbolic controller");
 		options.addOption(null, "jtlv", false, "Use JTLV package instead of CUDD");
 		options.addOption(null, "disable-opt", true, "Disable optimizations");
 		options.addOption(null, "disable-grouping", false, "Disable reorder with grouping");
@@ -94,11 +94,17 @@ public class SpectraCliTool {
 		if (cmd.hasOption("o")) {
 			outputFolderName = cmd.getOptionValue("o");
 		} else {
-			outputFolderName = new File(fileName).getParent() + File.separator + "out";
+			// Attempt to output the controller in an out folder in the same directory of the spec file
+			File f = new File(fileName);
+			if (f.getParent() != null) {
+				outputFolderName = new File(fileName).getParent() + File.separator + "out";	
+			} else {
+				outputFolderName = "out";
+			}
 		}
 		
 		boolean synthesize = cmd.hasOption("s");
-		boolean jit = cmd.hasOption("jit");
+		boolean stat = cmd.hasOption("static");
 		boolean optimize = !cmd.hasOption("disable-opt");
 		boolean grouping = !cmd.hasOption("disable-grouping");
 		boolean jtlv = cmd.hasOption("jtlv");
@@ -159,23 +165,7 @@ public class SpectraCliTool {
 				minWinCred = BDDEnergyReduction.getMinWinCred(gameModel, gr1.sysWinningStates());					
 			}
 			
-			if (jit) {
-				
-				SymbolicControllerJitInfoConstruction jitInfoConstruction = new SymbolicControllerJitInfoConstruction(gr1.getMem(), gameModel, minWinCred);
-				SymbolicControllerJitInfo jitInfo = jitInfoConstruction.calculateJitSymbollicControllerInfo();
-				
-				try {
-					// write down symbolic controller jit info
-					SymbolicControllerReaderWriter.writeJitSymbolicController(jitInfo, gameModel, outputFolderName, reorder);
-				} catch (Exception e) {
-					System.out.println("Error: Could not write bdd files");
-					e.printStackTrace();
-					return;
-				}
-				
-				System.out.println("Result: Successfully synthesized a just-in-time controller in output folder");
-				
-			} else {
+			if (stat) {
 				
 				SymbolicControllerConstruction cc = new GR1SymbolicControllerConstruction(gr1.getMem(), gameModel);
 				SymbolicController ctrl = cc.calculateSymbolicController();
@@ -192,7 +182,23 @@ public class SpectraCliTool {
 					return;
 				}
 				
-				System.out.println("Result: Successfully synthesized a controller in output folder");
+				System.out.println("Result: Successfully synthesized a static controller in output folder");
+				
+			} else {
+				
+				SymbolicControllerJitInfoConstruction jitInfoConstruction = new SymbolicControllerJitInfoConstruction(gr1.getMem(), gameModel, minWinCred);
+				SymbolicControllerJitInfo jitInfo = jitInfoConstruction.calculateJitSymbollicControllerInfo();
+				
+				try {
+					// write down symbolic controller jit info
+					SymbolicControllerReaderWriter.writeJitSymbolicController(jitInfo, gameModel, outputFolderName, reorder);
+				} catch (Exception e) {
+					System.out.println("Error: Could not write bdd files");
+					e.printStackTrace();
+					return;
+				}
+				
+				System.out.println("Result: Successfully synthesized a just-in-time controller in output folder");
 			}
 			
 		} else {  // Only check realizability
