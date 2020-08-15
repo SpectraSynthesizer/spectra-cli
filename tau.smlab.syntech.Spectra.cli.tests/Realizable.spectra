@@ -1,0 +1,50 @@
+import "DwyerPatterns.spectra"
+module DiningPhilo5     
+
+type State = {FREE, LEFT, RIGHT};
+define PHILNUM := 5;
+define PHILINDEX := 4;
+sys State[PHILNUM] chopsticks;
+env boolean[PHILNUM] eatRequest;
+
+// Initially there are no requests
+asm initialNoRequests:
+forall i in Int(0..PHILINDEX) . !eatRequest[i];
+
+// Initially the chopsticks are not taken from either side
+gar initialChopsticksFree:
+forall i in Int(0..PHILINDEX) . chopsticks[i] = FREE;
+
+// Eating philosopher stops requesting for chopsticks
+asm eatingPhiloDoesntRequest:
+G forall i in Int(0..PHILINDEX) . (chopsticks[i] = RIGHT & chopsticks[(i+1)%PHILNUM] = LEFT) -> next(!eatRequest[i]);
+
+// Once a philosopher starts requesting and one of the chopsticks is taken by neighboring philosopher they keep requesting
+asm keepRequesting:
+G forall i in Int(0..PHILINDEX) . (eatRequest[i] & (chopsticks[i] = LEFT | chopsticks[(i+1)%PHILNUM] = RIGHT)) -> next(eatRequest[i]);
+
+// Once a left chopstick is freed and a right philosopher requests food, they get it
+gar getLeftChopstick:
+G forall i in Int(0..PHILINDEX) . (eatRequest[i] & chopsticks[i] = FREE) -> next(chopsticks[i] = RIGHT);
+
+// Once a right chopstick is freed and a left philosopher requests food, they get it
+gar getRightChopstick:
+G forall i in Int(0..PHILINDEX) . (eatRequest[i] & chopsticks[(i+1)%PHILNUM] = FREE) -> next(chopsticks[(i+1)%PHILNUM] = LEFT);
+
+// Each philosopher must eat infinitely often
+// Eating philosopher is one who holds both chopsticks
+gar philoLiveness0:
+	pRespondsToS(eatRequest[0], chopsticks[0] = RIGHT & chopsticks[1] = LEFT);
+	
+gar philoLiveness1:
+	pRespondsToS(eatRequest[1], chopsticks[1] = RIGHT & chopsticks[2] = LEFT);
+	
+gar philoLiveness2:
+	pRespondsToS(eatRequest[2], chopsticks[2] = RIGHT & chopsticks[3] = LEFT);
+	
+gar philoLiveness3:
+	pRespondsToS(eatRequest[3], chopsticks[3] = RIGHT & chopsticks[4] = LEFT);
+	
+gar philoLiveness4:
+	pRespondsToS(eatRequest[4], chopsticks[4] = RIGHT & chopsticks[0] = LEFT);
+

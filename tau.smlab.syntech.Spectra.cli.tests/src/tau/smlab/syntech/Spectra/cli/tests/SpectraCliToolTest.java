@@ -162,12 +162,13 @@ public class SpectraCliToolTest {
 			SpectraCliTool.main(new String[] {
 					"-i",
 					"models/Realizable.spectra",
-					"-s"});
+					"-s",
+					"--static"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in output folder"));
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a static controller in output folder"));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.init.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.trans.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
@@ -182,8 +183,7 @@ public class SpectraCliToolTest {
 			SpectraCliTool.main(new String[] {
 					"-i",
 					"models/Realizable.spectra",
-					"-s",
-					"-jit"});
+					"-s"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -195,6 +195,28 @@ public class SpectraCliToolTest {
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/sizes")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
+		
+	}
+	
+	@Test
+	void testJitSynthesizeCreatesFilesWithCuddSameFolder() throws IOException {
+		
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"Realizable.spectra",
+					"-s"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a just-in-time controller in output folder"));
+		assertTrue(Files.deleteIfExists(Paths.get("out/fixpoints.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/justice.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/sizes")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("out")));
 		
 	}
 	
@@ -211,9 +233,11 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in output folder"));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.init.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.trans.bdd")));
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a just-in-time controller in output folder"));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/fixpoints.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/justice.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/sizes")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
 		
@@ -285,13 +309,14 @@ public class SpectraCliToolTest {
 					"-i",
 					"models/Realizable.spectra",
 					"--synthesize",
+					"--static",
 					"-o",
 					"models/custom-folder"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Result: Successfully synthesized a controller in output folder"));
+		assertTrue(outContent.toString().contains("Result: Successfully synthesized a static controller in output folder"));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/controller.init.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/controller.trans.bdd")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/vars.doms")));
