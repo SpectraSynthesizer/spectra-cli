@@ -1,5 +1,5 @@
 # Spectra Synthesizer command line interface
-This repository contains a command line tool that allows realizability checking and symbolic controller construction of Spectra specifications independently from the Eclipse environment. The tool, as well as the Spectra itself, was tested on recent Windows and Linux environments, and will not work on OS X.
+This repository contains a command line tool that allows realizability checking and symbolic controller construction of Spectra specifications independently from the Eclipse environment. This tool, as well as Spectra itself, were tested on recent Windows and Linux environments, and does not support Mac OS X.
 
 However, it is recommended to use Spectra tools and features inside the Eclipse environment. Spectra language relies on the Xtext framework, which is integrated into the IDE and is loaded once at startup along with all the Eclipse libraries. When using the command line tool, Xtext libraries will have to load on every call, which may affect performance. Furthermore, Spectra and its advanced add-ons benefit from the formatting and line marking features of the IDE.
 
