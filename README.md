@@ -16,10 +16,10 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/libcudd.so
 -i/--input		The path to the input spectra file. The only required argument.
 -o/--output		The folder where the controller should be created. If not specified, the same folder as the input will be used.
 -s/--synthesize		Synthesize a controller or just check for realizability. Default is false.
-   --static          Synthesize a static symbolic controller (as opposed to a just-in-time controller, which is the default)
+   --static             Synthesize a static symbolic controller (as opposed to a just-in-time controller, which is the default)
    --jtlv		Use JTLV Java package for BDD manipulation instead of CUDD C library. Default is false.
    --disable-opt	Disable optimizations. Default is false.
    --disable-grouping	Disable variable grouping. Default is false.
 -v/--verbose		Verbose logging. Default is false.
-   --reorder      Reorder BDD before save for reduced size
+   --reorder            Reorder BDD before save for reduced size
 ```
