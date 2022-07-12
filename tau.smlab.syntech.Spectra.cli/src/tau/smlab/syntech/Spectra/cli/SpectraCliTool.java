@@ -1,31 +1,3 @@
-/*
-Copyright (c) since 2015, Tel Aviv University and Software Modeling Lab
-
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of Tel Aviv University and Software Modeling Lab nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL Tel Aviv University and Software Modeling Lab 
-BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
-OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
-*/
-
 package tau.smlab.syntech.Spectra.cli;
 
 import java.io.File;
@@ -49,6 +21,9 @@ import tau.smlab.syntech.gameinputtrans.translator.DefaultTranslators;
 import tau.smlab.syntech.gameinputtrans.translator.Translator;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.PlayerModule.TransFuncType;
+import tau.smlab.syntech.games.controller.enumerate.ConcreteControllerConstruction;
+import tau.smlab.syntech.games.controller.enumerate.printers.MAAMinimizeAutomatonPrinter;
+import tau.smlab.syntech.games.controller.enumerate.printers.SimpleTextPrinter;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerConstruction;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerJitInfo;
@@ -59,8 +34,11 @@ import tau.smlab.syntech.games.gr1.GR1GameImplC;
 import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
 import tau.smlab.syntech.games.gr1.GR1SymbolicControllerConstruction;
 import tau.smlab.syntech.games.gr1.jit.SymbolicControllerJitInfoConstruction;
+import tau.smlab.syntech.games.rabin.RabinConcreteControllerConstruction;
+import tau.smlab.syntech.games.rabin.RabinGame;
 import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.Env;
+import tau.smlab.syntech.jtlv.ModuleVariableException;
 import tau.smlab.syntech.jtlv.BDDPackage.BBDPackageVersion;
 import tau.smlab.syntech.spectragameinput.ErrorsInSpectraException;
 import tau.smlab.syntech.spectragameinput.SpectraInputProviderNoIDE;
@@ -80,6 +58,7 @@ public class SpectraCliTool {
 		options.addOption(null, "disable-grouping", false, "Disable reorder with grouping");
 		options.addOption("v", "verbose", false, "Verbose logging");
 		options.addOption(null, "reorder", false, "Reorder BDD before save for reduced size");
+		options.addOption(null, "counter-strategy", false, "Generate counter-strategy for an unrealizable specification");
 
 		CommandLineParser parser = new DefaultParser();
 		CommandLine cmd = parser.parse(options, args);
@@ -110,6 +89,7 @@ public class SpectraCliTool {
 		boolean jtlv = cmd.hasOption("jtlv");
 		boolean verbose = cmd.hasOption("v");
 		boolean reorder = cmd.hasOption("reorder");
+		boolean counterStrategy = cmd.hasOption("counter-strategy");
 		BDDPackage pkg = jtlv ? BDDPackage.JTLV : BDDPackage.CUDD;
 		BDDPackage.BBDPackageVersion version = jtlv ? BBDPackageVersion.DEFAULT : BBDPackageVersion.CUDD_3_0;
 		BDDPackage.setCurrPackage(pkg, version);
@@ -205,8 +185,42 @@ public class SpectraCliTool {
 			
 			if (gr1.checkRealizability()) {
 				System.out.println("Result: Specification is realizable");
+				
+				if (counterStrategy) {
+					System.out.println("Error: Cannot generate counter-strategy for a realizable specification");
+				}
 			} else {
 				System.out.println("Result: Specification is unrealizable");
+				
+				if (counterStrategy) {
+
+					RabinGame rabin = new RabinGame(gameModel);
+					assert (rabin.checkRealizability());
+
+					if (gameModel.getWeights() != null) {
+						try {
+							BDDEnergyReduction.updateSysIniTransWithEngConstraintsForCounterStrategy(gameModel, gi.getEnergyBound());
+						} catch (ModuleVariableException e) {
+							System.out.println("Error: Could not generate concrete counter-strategy");
+							e.printStackTrace();
+						}
+					}
+
+					Env.disableReorder();
+
+					ConcreteControllerConstruction cc = new RabinConcreteControllerConstruction(rabin.getMem(), gameModel);
+					try {
+						if (jtlv) {
+							new SimpleTextPrinter().printController(System.out, cc.calculateConcreteController());
+						} else {
+							MAAMinimizeAutomatonPrinter.REMOVE_DEAD_STATES = false;
+							new MAAMinimizeAutomatonPrinter(gameModel).printController(System.out, cc.calculateConcreteController());
+						}
+					} catch (Exception e) {
+						System.out.println("Error: Could not generate concrete counter-strategy");
+						e.printStackTrace();
+					}
+				}
 			}
 		}
 		
