@@ -6,6 +6,7 @@ import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
@@ -59,12 +60,15 @@ public class SpectraCliTool {
 		options.addOption("v", "verbose", false, "Verbose logging");
 		options.addOption(null, "reorder", false, "Reorder BDD before save for reduced size");
 		options.addOption(null, "counter-strategy", false, "Generate counter-strategy for an unrealizable specification");
+		options.addOption(null, "counter-strategy-jtlv-format", false, "Generate counter-strategy for an unrealizable specification and print in JTLV format");
 
 		CommandLineParser parser = new DefaultParser();
 		CommandLine cmd = parser.parse(options, args);
 		
 		if (!cmd.hasOption("i")) {
 			System.out.println("Error: No Spectra file name provided");
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp("java -jar spectra-cli.jar", options);
 			return;
 		}
 		String fileName = cmd.getOptionValue("i");
@@ -89,7 +93,10 @@ public class SpectraCliTool {
 		boolean jtlv = cmd.hasOption("jtlv");
 		boolean verbose = cmd.hasOption("v");
 		boolean reorder = cmd.hasOption("reorder");
-		boolean counterStrategy = cmd.hasOption("counter-strategy");
+		boolean counterStrategyJtlvFormat = cmd.hasOption("counter-strategy-jtlv-format");
+		boolean counterStrategy = cmd.hasOption("counter-strategy") || counterStrategyJtlvFormat;
+		
+		
 		BDDPackage pkg = jtlv ? BDDPackage.JTLV : BDDPackage.CUDD;
 		BDDPackage.BBDPackageVersion version = jtlv ? BBDPackageVersion.DEFAULT : BBDPackageVersion.CUDD_3_0;
 		BDDPackage.setCurrPackage(pkg, version);
@@ -195,7 +202,9 @@ public class SpectraCliTool {
 				if (counterStrategy) {
 
 					RabinGame rabin = new RabinGame(gameModel);
-					assert (rabin.checkRealizability());
+					if (!rabin.checkRealizability()) {
+						System.out.println("Error: Cannot generate counter-strategy for a realizable specification");
+					}
 
 					if (gameModel.getWeights() != null) {
 						try {
@@ -210,7 +219,7 @@ public class SpectraCliTool {
 
 					ConcreteControllerConstruction cc = new RabinConcreteControllerConstruction(rabin.getMem(), gameModel);
 					try {
-						if (jtlv) {
+						if (counterStrategyJtlvFormat) {
 							new SimpleTextPrinter().printController(System.out, cc.calculateConcreteController());
 						} else {
 							MAAMinimizeAutomatonPrinter.REMOVE_DEAD_STATES = false;

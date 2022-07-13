@@ -1,13 +1,22 @@
 In order to use the Spectra command line tool:
 
 1. Build the jar, or use spectra-cli.jar in the lib folder
+1a. Add the file plugin.properties to the root of the jar to avoid warnings by Xtext
 2. Run from lib folder `java -jar spectra-cli.jar` with the following arguments:
 
--i	/	--input				The path to the input spectra file. The only required argument.
--o	/	--output			The folder where the controller should be created. If not specified, the same folder
-							as the input will be used.
--s	/	--synthesize		Synthesize a controller or just check for realizability. Default is false.
-		--jtlv				Use JTLV Java package for BDD manipulation instead of CUDD C library. Default is false.
-		--disable-opt		Disable optimizations. Default is false.
-		--disable-grouping	Disable variable grouping. Default is false.
--v	/	--verbose			Verbose logging. Default is false.
+	usage: java -jar spectra-cli.jar
+	    --counter-strategy               Generate counter-strategy for an
+	                                     unrealizable specification
+	    --counter-strategy-jtlv-format   Generate counter-strategy for an
+	                                     unrealizable specification and print
+	                                     in JTLV format
+	    --disable-grouping               Disable reorder with grouping
+	    --disable-opt <arg>              Disable optimizations
+	 -i,--input <arg>                    Spectra input file name
+	    --jtlv                           Use JTLV package instead of CUDD
+	 -o,--output <arg>                   Ouptut folder
+	    --reorder                        Reorder BDD before save for reduced
+	                                     size
+	 -s,--synthesize                     Synthesize symbolic controller
+	    --static                         Synthesize static symbolic controller
+	 -v,--verbose                        Verbose logging
