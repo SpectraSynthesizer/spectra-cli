@@ -19,4 +19,8 @@ In order to use the Spectra command line tool:
 	                                     size
 	 -s,--synthesize                     Synthesize symbolic controller
 	    --static                         Synthesize static symbolic controller
+	    --well-separation				 Check well-separation considering 
+	    								 system guarantees
+	    --well-separation-ignore-sys	 Check well-separation ignoring system 
+	    								 guarantees
 	 -v,--verbose                        Verbose logging

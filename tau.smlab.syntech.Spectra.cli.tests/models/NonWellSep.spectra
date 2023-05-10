@@ -1,0 +1,18 @@
+spec TrafficLightNonWellSep
+
+env boolean carA;
+env boolean carB;
+
+sys boolean greenA;
+sys boolean greenB;
+sys boolean maintenance;
+
+asm ini !carA & !carB;
+asm GF carB;
+asm GF carA;
+asm G maintenance -> next(!carA);
+
+gar ini !maintenance;
+gar G !(greenA & greenB);
+gar GF carA & greenA;
+gar GF carB & greenB;
