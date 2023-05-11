@@ -1,3 +1,31 @@
+/*
+Copyright (c) since 2015, Tel Aviv University and Software Modeling Lab
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of Tel Aviv University and Software Modeling Lab nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL Tel Aviv University and Software Modeling Lab 
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+*/
+
 package tau.smlab.syntech.Spectra.cli;
 
 import java.io.File;
@@ -21,13 +49,15 @@ import tau.smlab.syntech.gameinputtrans.TranslationProvider;
 import tau.smlab.syntech.gameinputtrans.translator.DefaultTranslators;
 import tau.smlab.syntech.gameinputtrans.translator.Translator;
 import tau.smlab.syntech.gamemodel.GameModel;
+import tau.smlab.syntech.gamemodel.ModuleException;
 import tau.smlab.syntech.gamemodel.PlayerModule.TransFuncType;
+import tau.smlab.syntech.games.AbstractGamesException;
 import tau.smlab.syntech.games.controller.enumerate.ConcreteControllerConstruction;
 import tau.smlab.syntech.games.controller.enumerate.printers.MAAMinimizeAutomatonPrinter;
 import tau.smlab.syntech.games.controller.enumerate.printers.SimpleTextPrinter;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerConstruction;
-import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerJitInfo;
+import tau.smlab.syntech.games.controller.jits.SymbolicControllerJitInfo;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerReaderWriter;
 import tau.smlab.syntech.games.gr1.GR1Game;
 import tau.smlab.syntech.games.gr1.GR1GameExperiments;
@@ -35,6 +65,8 @@ import tau.smlab.syntech.games.gr1.GR1GameImplC;
 import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
 import tau.smlab.syntech.games.gr1.GR1SymbolicControllerConstruction;
 import tau.smlab.syntech.games.gr1.jit.SymbolicControllerJitInfoConstruction;
+import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker;
+import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker.Systems;
 import tau.smlab.syntech.games.rabin.RabinConcreteControllerConstruction;
 import tau.smlab.syntech.games.rabin.RabinGame;
 import tau.smlab.syntech.jtlv.BDDPackage;
@@ -54,6 +86,8 @@ public class SpectraCliTool {
 		options.addOption("o", "output", true, "Ouptut folder");
 		options.addOption("s", "synthesize", false, "Synthesize symbolic controller");
 		options.addOption(null, "static", false, "Synthesize static symbolic controller");
+		options.addOption(null, "well-separation", false, "Check well-separation considering system guarantees");
+		options.addOption(null, "well-separation-ignore-sys", false, "Check well-separation ignoring system guarantees");
 		options.addOption(null, "jtlv", false, "Use JTLV package instead of CUDD");
 		options.addOption(null, "disable-opt", true, "Disable optimizations");
 		options.addOption(null, "disable-grouping", false, "Disable reorder with grouping");
@@ -87,6 +121,8 @@ public class SpectraCliTool {
 		}
 		
 		boolean synthesize = cmd.hasOption("s");
+		boolean wellSep = cmd.hasOption("well-separation");
+		boolean wellSepIgnoreSys = cmd.hasOption("well-separation-ignore-sys");
 		boolean stat = cmd.hasOption("static");
 		boolean optimize = !cmd.hasOption("disable-opt");
 		boolean grouping = !cmd.hasOption("disable-grouping");
@@ -96,6 +132,12 @@ public class SpectraCliTool {
 		boolean counterStrategyJtlvFormat = cmd.hasOption("counter-strategy-jtlv-format");
 		boolean counterStrategy = cmd.hasOption("counter-strategy") || counterStrategyJtlvFormat;
 		
+		
+		if (stat) {
+			outputFolderName += File.separator + "static";
+		} else {
+			outputFolderName += File.separator + "jit";
+		}
 		
 		BDDPackage pkg = jtlv ? BDDPackage.JTLV : BDDPackage.CUDD;
 		BDDPackage.BBDPackageVersion version = jtlv ? BBDPackageVersion.DEFAULT : BBDPackageVersion.CUDD_3_0;
@@ -138,6 +180,35 @@ public class SpectraCliTool {
 				optimize ? TransFuncType.DECOMPOSED_FUNC : TransFuncType.SINGLE_FUNC, verbose);
 		GR1Game gr1 = getGR1Game(gameModel, gi, pkg, optimize);
 		
+		if (wellSep || wellSepIgnoreSys) {
+			WellSeparationChecker checker = new WellSeparationChecker();
+			List<String> res;
+			Systems systems;
+			try {
+				if (wellSep) {
+					systems = Systems.SPEC;
+				} else {
+					systems = Systems.NONE;
+				}
+				
+				res = checker.diagnose(gameModel, systems);
+				
+				if (res.isEmpty()) {
+					System.out.println("Result: Specification is well-separated");
+					return;
+				} else {
+					System.out.println("Result: Specification is non-well-separated");
+					return;
+				}
+			} catch (AbstractGamesException | ModuleException e) {
+				System.out.println("Error: Could not check well separation");
+				e.printStackTrace();
+				return;
+			}
+		}
+
+
+		
 		if (synthesize) {
 			
 			if (!gr1.checkRealizability()) {
@@ -162,7 +233,7 @@ public class SpectraCliTool {
 				try {
 					// create symbolic controller if not exists
 					// write the actual symbolic controller BDDs and doms
-					SymbolicControllerReaderWriter.writeSymbolicController(ctrl, gameModel, outputFolderName, reorder);
+					SymbolicControllerReaderWriter.writeSymbolicController(ctrl, gameModel, outputFolderName, gi.getName(), reorder);
 				} catch (Exception e) {
 					System.out.println("Error: Could not write bdd files");
 					e.printStackTrace();
@@ -178,7 +249,7 @@ public class SpectraCliTool {
 				
 				try {
 					// write down symbolic controller jit info
-					SymbolicControllerReaderWriter.writeJitSymbolicController(jitInfo, gameModel, outputFolderName, reorder);
+					SymbolicControllerReaderWriter.writeJitSymbolicController(jitInfo, gameModel, outputFolderName, gi.getName(), reorder);
 				} catch (Exception e) {
 					System.out.println("Error: Could not write bdd files");
 					e.printStackTrace();
@@ -202,6 +273,7 @@ public class SpectraCliTool {
 				if (counterStrategy) {
 
 					RabinGame rabin = new RabinGame(gameModel);
+
 					if (!rabin.checkRealizability()) {
 						System.out.println("Error: Cannot generate counter-strategy for a realizable specification");
 					}

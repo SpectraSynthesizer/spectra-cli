@@ -1,3 +1,31 @@
+/*
+Copyright (c) since 2015, Tel Aviv University and Software Modeling Lab
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of Tel Aviv University and Software Modeling Lab nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL Tel Aviv University and Software Modeling Lab 
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE 
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+*/
+
 package tau.smlab.syntech.Spectra.cli.tests;
 
 import static org.junit.Assert.assertTrue;
@@ -128,6 +156,51 @@ public class SpectraCliToolTest {
 	}
 	
 	@Test
+	void testNonWellSeparatedSpec() {
+		
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/NonWellSep.spectra",
+					"-well-separation"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Specification is non-well-separated"));
+	}
+	
+	@Test
+	void testNonWellSeparatedSpecIgnoreSystem() {
+		
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/NonWellSep.spectra",
+					"-well-separation-ignore-sys"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Specification is non-well-separated"));
+	}
+	
+	@Test
+	void testWellSeparatedSpec() {
+		
+		try {
+			SpectraCliTool.main(new String[] {
+					"-i",
+					"models/Realizable.spectra",
+					"-well-separation"});
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		
+		assertTrue(outContent.toString().contains("Result: Specification is well-separated"));
+	}
+	
+	@Test
 	void testSynthesizeCreatesFilesWithCudd() throws IOException {
 		
 		try {
@@ -141,9 +214,10 @@ public class SpectraCliToolTest {
 		}
 		
 		assertTrue(outContent.toString().contains("Result: Successfully synthesized a static controller in output folder"));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.init.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/controller.trans.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/static/DiningPhilo5.controller.init.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/static/DiningPhilo5.controller.trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/static/DiningPhilo5.vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/static")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
 		
 	}
@@ -161,13 +235,13 @@ public class SpectraCliToolTest {
 		}
 		
 		assertTrue(outContent.toString().contains("Result: Successfully synthesized a just-in-time controller in output folder"));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/fixpoints.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/trans.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/justice.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/sizes")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.fixpoints.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.justice.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.sizes")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
-		
 	}
 	
 	@Test
@@ -183,11 +257,12 @@ public class SpectraCliToolTest {
 		}
 		
 		assertTrue(outContent.toString().contains("Result: Successfully synthesized a just-in-time controller in output folder"));
-		assertTrue(Files.deleteIfExists(Paths.get("out/fixpoints.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("out/trans.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("out/justice.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("out/sizes")));
-		assertTrue(Files.deleteIfExists(Paths.get("out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/jit/DiningPhilo5.fixpoints.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/jit/DiningPhilo5.trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/jit/DiningPhilo5.justice.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/jit/DiningPhilo5.sizes")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/jit/DiningPhilo5.vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("out/jit")));
 		assertTrue(Files.deleteIfExists(Paths.get("out")));
 		
 	}
@@ -206,13 +281,13 @@ public class SpectraCliToolTest {
 		}
 		
 		assertTrue(outContent.toString().contains("Result: Successfully synthesized a just-in-time controller in output folder"));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/fixpoints.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/trans.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/justice.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/sizes")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/out/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.fixpoints.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.justice.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.sizes")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit/DiningPhilo5.vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/out/jit")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/out")));
-		
 	}
 	
 	@Test
@@ -237,8 +312,7 @@ public class SpectraCliToolTest {
 			SpectraCliTool.main(new String[] {
 					"-i",
 					"models/Unrealizable.spectra",
-					"-counter-strategy",
-					"-jtlv"});
+					"-counter-strategy-jtlv-format"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -335,9 +409,10 @@ public class SpectraCliToolTest {
 		}
 		
 		assertTrue(outContent.toString().contains("Result: Successfully synthesized a static controller in output folder"));
-		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/controller.init.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/controller.trans.bdd")));
-		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/static/DiningPhilo5.controller.init.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/static/DiningPhilo5.controller.trans.bdd")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/static/DiningPhilo5.vars.doms")));
+		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/static")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder")));
 	}
 }
