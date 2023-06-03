@@ -6,7 +6,7 @@ However, it is recommended to use Spectra tools and features from inside the Ecl
 ## Usage 
 In order to use the Spectra command line tool:
 
-1. Build the jar, or use spectra-cli.jar in the lib folder
+1. Build the jar as a runnable jar file
 2. Run the jar from a folder containing cudd.dll (Windows), or libcudd.so (Linux). On Linux you may need to update `LD_LIBRARY_PATH` with the following command:
 ```
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/libcudd.so
