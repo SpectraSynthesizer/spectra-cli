@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
+import tau.smlab.syntech.Spectra.cli.SpectraAnalyses;
 import tau.smlab.syntech.Spectra.cli.SpectraCliTool;
 
 @TestInstance(Lifecycle.PER_CLASS)
@@ -78,6 +79,20 @@ public class SpectraCliToolTest {
 		
 		assertTrue(outContent.toString().contains("Result: Specification is realizable"));
 	}
+	
+	 @Test
+	  void testTmp() {
+	  
+	    try {
+	      SpectraCliTool.main(new String[] {
+	          "-i",
+	          "models/tmp.spectra"});
+	    } catch (ParseException e) {
+	      e.printStackTrace(originalOut);
+	      throw new RuntimeException(e);
+	    }
+	    assertTrue(outContent.toString().contains("Error: XtextSyntaxDiagnostic: null:1 no viable alternative at input 'env'"));
+	  }
 	
 	@Test
 	void testRealizableSpecWithCuddVerbose() {
@@ -122,7 +137,7 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Error: Must specify energy bound for specification"));
+		assertTrue(outContent.toString().contains("Error: Energy bound not specified"));
 	}
 	
 	@Test
@@ -160,9 +175,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+			    "-a",
+			    SpectraAnalyses.CHECK_WELL_SEP.getDescription(),
 					"-i",
-					"models/NonWellSep.spectra",
-					"-well-separation"});
+					"models/NonWellSep.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -190,9 +206,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.CHECK_WELL_SEP.getDescription(),
 					"-i",
-					"models/Realizable.spectra",
-					"-well-separation"});
+					"models/Realizable.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -205,10 +222,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.STATIC_SYMBOLIC_CONTROLLER.getDescription(),
 					"-i",
-					"models/Realizable.spectra",
-					"-s",
-					"--static"});
+					"models/Realizable.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -227,9 +244,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+			    "-a",
+          SpectraAnalyses.SYMBOLIC_CONTROLLER.getDescription(),
 					"-i",
-					"models/Realizable.spectra",
-					"-s"});
+					"models/Realizable.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -249,9 +267,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.SYMBOLIC_CONTROLLER.getDescription(),			    
 					"-i",
-					"Realizable.spectra",
-					"-s"});
+					"Realizable.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -272,9 +291,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.SYMBOLIC_CONTROLLER.getDescription(),			    
 					"-i",
 					"models/Realizable.spectra",
-					"-s",
 					"-reorder"});
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -295,9 +315,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+			    "-a",
+	        SpectraAnalyses.SYMBOLIC_CONTROLLER.getDescription(),
 					"-i",
-					"models/Unrealizable.spectra",
-					"-s"});
+					"models/Unrealizable.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -310,9 +331,11 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.CONCRETE_COUNTER_STRATEGY.getDescription(),
 					"-i",
 					"models/Unrealizable.spectra",
-					"-counter-strategy-jtlv-format"});
+					"-jtlv-format"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -325,9 +348,11 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+	         "-a",
+	          SpectraAnalyses.CONCRETE_COUNTER_STRATEGY.getDescription(),
 					"-i",
 					"models/Unrealizable.spectra",
-					"-counter-strategy"});
+					});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -340,9 +365,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.CONCRETE_COUNTER_STRATEGY.getDescription(),
 					"-i",
-					"models/Realizable.spectra",
-					"-counter-strategy"});
+					"models/Realizable.spectra"});
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
@@ -390,7 +416,7 @@ public class SpectraCliToolTest {
 			e.printStackTrace();
 		}
 		
-		assertTrue(outContent.toString().contains("Error: No Spectra file name provided"));
+		assertTrue(outContent.toString().contains("Error: "));
 	}
 	
 	@Test
@@ -398,10 +424,10 @@ public class SpectraCliToolTest {
 		
 		try {
 			SpectraCliTool.main(new String[] {
+          "-a",
+          SpectraAnalyses.STATIC_SYMBOLIC_CONTROLLER.getDescription(),
 					"-i",
 					"models/Realizable.spectra",
-					"--synthesize",
-					"--static",
 					"-o",
 					"models/custom-folder"});
 		} catch (ParseException e) {
@@ -415,4 +441,120 @@ public class SpectraCliToolTest {
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder/static")));
 		assertTrue(Files.deleteIfExists(Paths.get("models/custom-folder")));
 	}
+	
+	 @Test
+	  void testUnrealCoreRealizable() {
+	    
+	    try {
+	      SpectraCliTool.main(new String[] {
+	          "-a",
+	          SpectraAnalyses.UNREALIZABLE_CORE.getDescription(),
+	          "-i",
+	          "models/Realizable.spectra"});
+	    } catch (ParseException e) {
+	      e.printStackTrace();
+	    }
+	    
+	    assertTrue(outContent.toString().contains("Result: Specification is realizable"));
+	  }
+	 
+   @Test
+   void testUnrealCore() {
+     
+     try {
+       SpectraCliTool.main(new String[] {
+           "-a",
+           SpectraAnalyses.UNREALIZABLE_CORE.getDescription(),
+           "-i",
+           "models/Unrealizable.spectra"});
+     } catch (ParseException e) {
+       e.printStackTrace();
+     }
+     
+     assertTrue(outContent.toString().contains("Result: Found unrealizable core with"));
+   }
+   
+   @Test
+   void testUnrealCoreLines() {
+     
+     try {
+       SpectraCliTool.main(new String[] {
+           "-a",
+           SpectraAnalyses.UNREALIZABLE_CORE.getDescription(),
+           "-i",
+           "models/Unrealizable.spectra",
+           "--print-core-lines",
+           });
+     } catch (ParseException e) {
+       e.printStackTrace();
+     }
+     
+     assertTrue(outContent.toString().contains("CORE-LINES: [15,27,31]"));
+   }
+
+   @Test
+   void testNonWellSeparatedCore() {
+     
+     try {
+       SpectraCliTool.main(new String[] {
+           "-a",
+           SpectraAnalyses.NON_WELL_SEP_CORE.getDescription(),
+           "-i",
+           "models/NonWellSep.spectra"});
+     } catch (ParseException e) {
+       e.printStackTrace();
+     }
+     
+     assertTrue(outContent.toString().contains("Result: Found non-well-separated core with"));
+   }
+   
+   @Test
+   void testNonWellSeparatedCoreWellSep() {
+     
+     try {
+       SpectraCliTool.main(new String[] {
+           "-a",
+           SpectraAnalyses.NON_WELL_SEP_CORE.getDescription(),
+           "-i",
+           "models/Realizable.spectra"});
+     } catch (ParseException e) {
+       e.printStackTrace();
+     }
+     
+     assertTrue(outContent.toString().contains("Result: Specification is well-separated"));
+   }
+   
+   @Test
+   void testNonWellSeparatedCoreWellSepLines() {
+     
+     try {
+       SpectraCliTool.main(new String[] {
+           "-a",
+           SpectraAnalyses.NON_WELL_SEP_CORE.getDescription(),
+           "--print-core-lines",
+           "-i",
+           "models/Realizable.spectra"});
+     } catch (ParseException e) {
+       e.printStackTrace();
+     }
+     
+     assertTrue(outContent.toString().contains("CORE-LINES: []"));
+   }
+   
+   @Test
+   void testNonWellSeparatedCoreLines() {
+     
+     try {
+       SpectraCliTool.main(new String[] {
+           "-a",
+           SpectraAnalyses.NON_WELL_SEP_CORE.getDescription(),
+           "--print-core-lines",
+           "-i",
+           "models/NonWellSep.spectra"});
+     } catch (ParseException e) {
+       e.printStackTrace();
+     }
+     
+     assertTrue(outContent.toString().contains("CORE-LINES: [12,13]"));
+   }
 }

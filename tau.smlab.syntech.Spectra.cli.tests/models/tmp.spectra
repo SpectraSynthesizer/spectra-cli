@@ -1,0 +1,9 @@
+env boolean stat;
+env boolean eOff;
+sys boolean go;
+
+asm alw (eOff -> stat); -- emergency stop only at stations
+
+gar !go;-- initial stop  
+gar alw (eOff -> !go); -- emergency stop  
+gar alwEv (!eOff -> go); -- always eventually move around  
